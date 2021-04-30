@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+     <script src="https://unpkg.com/react@15.3.2/dist/react.js"></script>
+ <script src="https://unpkg.com/react-dom@15.3.2/dist/react-dom.js"></script>
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-core/5.8.23/browser.min.js"></script>
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.2.8/d3.min.js" type="text/JavaScript"></script>
+      
+      <style>
+          #wrapper{
+    background-color:beige;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+    min-width: 1000px;
+    max-width: 1280px;
+    
+}
+          header{
+  
+    width: 1280px;
+    height: 70px;
+  
+}
+ h1{
+    padding-top: 15px;
+     margin-top: 15px;
+    text-align: center;
+    font-size: 60px;
+    color: #40c4ff;
+   
+}
+nav{
+    padding-left: 350px;
+}
+ul{
+    float: left;
+    list-style-type: none;
+    margin-top: 25px;
+}
+ul li{
+    display:inline-block;
+}
+ul li a{
+    text-decoration: none;
+    color: #40c4ff;
+    padding: 5px 20px;
+    border:1px solid #fff;
+    transition: 0.6s ease;
+    margin-top: 0;
+}
+ul li a:hover{
+    background-color: #fff;
+    color:#000;
+}
+      .graph{
+          padding-left: 190px;
+          padding-top: 40px;
+          }
+          h3{
+              color: #40c4ff;
+              font-size: 24px;
+              padding-left: 320px;
+          }
+      </style>
+  </head>
+
+  <body>
+      <div id="wrapper">
+       <h1>Unemployment of USA</h1>
+         <header>
+        <nav>
+            <ul>
+              <li>  <a href="home.html">Home</a>&nbsp;</li>
+               <li> <a href="index.html"  >Graph</a>&nbsp;</li>
+               <li> <a href="react.html" >Data for National Data</a></li></ul>
+        </nav>
+               
+        </header>
+          <h3>This graph is for national data of  USA with react.</h3>
+      <div class="graph">
+    <div id="bargraph"></div>
+    <script type="text/babel">
+      class Bar extends React.Component {
+
+  constructor(props) {
+    super(props)
+  }
+
+  render() {
+    let style = {
+      fill: "grey"
+    }
+
+    return(
+      <g>
+	      <rect class="bar" style={style} x={this.props.x} y={this.props.y + 5} width={this.props.width} height={this.props.height} />
+      </g>
+    )
+  }
+
+}
+
+class YAxis extends React.Component {
+
+  constructor(props) {
+    super(props)
+  }
+
+  render() {
+    let style = {
+      stroke: "grey",
+      strokeWidth: "1px"
+    }
+    
+    let textStyle = {
+      fontSize: "0.8em",
+      fill: "grey",
+      textAnchor: "end"
+    }
+    
+    let ticks = d3.range(0, this.props.end, (this.props.end / this.props.labels.length))
+   
+   let columnLables = []
+    ticks.forEach((tick, index) => {
+      columnLables.push(<text style={ textStyle } y={tick + 6} x={this.props.y - 6} >{(this.props.labels[index])}</text>)
+    })
+    
+  
+    return(
+      <g>
+	      <g className="y_labels" transform={`translate(${-5},${17})`}>
+	      <line x1={this.props.y} y1={this.props.start} y2={this.props.end} x2={this.props.y} style={ style } />
+	      </g>
+	      <g className="y_labels" transform={`translate(${-5},${51})`}>
+	        { columnLables }
+	       
+	      </g>
+      </g>
+    )
+  }
+
+}
+
+class XAxis extends React.Component {
+
+  constructor(props) {
+    super(props)
+  }
+
+  render() {
+    let style = {
+      stroke: "grey",
+      strokeWidth: "1px"
+    }
+    
+    let step = (this.props.start + this.props.end / this.props.labels.length)
+    
+   
+    let ticks = d3.range(this.props.start, this.props.end, step)
+    
+   
+    let columnLables = []
+    ticks.forEach((tick, index) => {
+      columnLables.push(<text style={{fill: "grey"}} x={tick + 5} y={this.props.x + 20} >{this.props.labels[index]}</text>)
+    })
+    
+  
+    return(
+      <g>
+	      <line x1={this.props.start} y1={this.props.x } x2={this.props.end} y2={this.props.x} style={ style } />
+	      { columnLables }
+	    
+      </g>
+    )
+  }
+
+}
+
+class ReactChart extends React.Component {
+
+  render() {
+    let data = this.props.data
+
+    let margin = {top: 20, right: 20, bottom: 30, left: 45},
+      width = this.props.width - margin.left - margin.right,
+      height = this.props.height - margin.top - margin.bottom;
+
+    let graphData = data.map((d) => d.state)
+
+    //D3 mathy bits    
+    let ticks = d3.range(0, width, (width / data.length))
+    let x = d3.scaleOrdinal()
+      .domain(graphData)
+      .range(ticks)
+    let y = d3.scaleLinear()
+      .domain([0, d3.max(data, (d) => d.rate)])
+      .range([height, 0])
+
+    let bars = []
+    let bottom = 450
+    
+    data.forEach((datum, index) => {
+      bars.push(<Bar key={index} x={x(datum.state)} y={bottom - 6 - (height - y(datum.rate))} width={20} height={height - y(datum.rate)} />)
+    })
+
+    return (
+      <svg width={this.props.width} height={this.props.height}>
+      	<YAxis y={40} labels={y.ticks().reverse()} start={15} end={height} />
+	      
+	      <g className="chart" transform={`translate(${margin.left},${margin.top})`}>
+	         { bars }
+	         <XAxis x={ bottom } labels={graphData} start={-2} end={width} />
+	      </g>
+      </svg>
+    );
+  }
+
+}
+
+let data = [
+  {state: 2020, rate: 11.2},
+     {state: 2019, rate: 11.1},
+     {state: 2018, rate: 10.2},
+     {state:2017, rate: 9.1},
+     {state: 2016, rate: 8.1},
+     {state: 2015, rate: 10.2},
+     {state: 2014, rate: 9.1},
+    
+  ]
+
+ReactDOM.render(
+  <ReactChart width={800} height={500}  data={data} />,
+    document.getElementById('bargraph')
+);
+ 
+      </script>
+      </div>
+      </div>
+  </body>
+
+</html>

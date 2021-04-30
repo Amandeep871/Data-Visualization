@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<script
+			  src="./js/jquery-2.2.4.min.js"
+			  integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44="
+			  crossorigin="anonymous">
+		</script>
+
+		<script src="./js/d3.v3.min.js"></script>
+
+
+	
+		<link rel="stylesheet" href="css/style.css">
+    </head>
+	<body>
+        <div id="wrapper">
+          <header>
+        <h1>Unemployment of USA</h1>
+         
+        <nav>
+            <ul>
+              <li>  <a href="home.html">Home</a>&nbsp;</li>
+               <li> <a href="index.html"  >Graph</a>&nbsp;</li>
+               <li> <a href="react.html" >Data for National Data</a></li></ul>
+        </nav>
+               
+        </header>
+	<div class="container-fluid">
+ 	 <div class="row">
+		<div id="chart1">
+			<div class="chart-header">
+				<h3>Unemployment rate by state: </h3>
+				<p>
+					<span>Select state: </span>
+					<span>
+						<select id="selectedstate" style="width:200px;"></select>
+					</span>
+				</p>
+				<div class="radio-selector">
+					<span> Select period:</span>
+					<div class="radio" data-value="0">12 months</div>
+					<div class="radio" data-value="1">2 years</div>
+				</div>
+				<div class="desc span3">
+						<p>
+							<span><b>Year:</b></span>&nbsp;<span id="year"></span>
+							<br>
+							<span><b>Month:</b></span>&nbsp;<span id="month"></span>
+							<br>
+							<span><b>Unemployment rate:</b></span>&nbsp;<span id="rate"></span>
+						</p>
+				</div>
+			</div>
+			<div id="chart1-area" class="chart-area">
+				<div id="chart1-canvas" class="chart-canvas">
+					<div id="plotter"></div>				
+            	</div>
+			</div>
+			<div id="usMap">
+    			  <svg></svg>
+    		</div>
+		</div>
+	</div>
+</div>
+        </div>
+</body>
+	<script>
+
+			 // US map drawing.
+	    //Width and height of map
+	    var width = $("#usMap").width();
+	    var height = 300;
+
+	    // D3 Projection
+	    var projection = d3.geo.albersUsa()
+	                       .translate([width/2, height/2])    
+	                       .scale([width]);        			 
+
+	    // Define path generator
+	    var path = d3.geo.path()               // Path generator to convert GeoJSON to SVG plot
+	                 .projection(projection);  
+	    
+	    //Create SVG element and append map to the SVG
+	    var mapSvg = d3.select("#usMap")
+	                .select("svg")
+	                .attr("width", width)
+	                .attr("height", height);
+	    
+	  mapSvg.append("rect")
+      .attr("class", "background")
+      .attr("width", width)
+      .attr("height", height)
+      .style("fill", "#FFF")
+      .on("click", function() {
+        mapSvg.selectAll("path").each(function(d) {
+          if (d3.select(this).classed("active")) {
+            
+          }
+        });
+      });
+    
+    d3.json("data/us-states.json", function(json) {
+      
+    // Bind the data to the SVG 
+    mapSvg.selectAll("path")
+        .data(json.features)
+        .enter()
+        .append("path")
+        .attr("d", path)
+        .attr("id", function(d) { return d.properties.name.replace(/\s+/g, ''); })
+        .style("stroke", "#fff")
+        .style("stroke-width", "1")
+        .classed("inactive", false)
+        .classed("active", true)
+        .on("click", function() {
+          
+        });
+    });
+    
+	   	var select_state_default_prompt="Select state";
+		var months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+		var max_plot_width=1000;
+		var plot_height = 300;
+		var bar_width = 2;
+		var csv_data = [];
+
+		d3.csv("data/unemployment.csv", function(d) {  
+			return {
+				year : +d.Year,
+				month : d.Month,
+				state : d.State,
+				u_rate : +d["Unemployment rates"]
+			};
+			}, function(data) {
+
+			console.log(data.length);
+			csv_data = data;                 // Storing CSV data
+
+			var all_states = [];
+
+			data.forEach(function(d,i){              // States
+				if(all_states.indexOf(d.state)<0)
+				{
+					all_states.push(d.state);
+				}
+			});	
+
+			console.log(all_states.length);
+			
+			var state_select_options = [select_state_default_prompt];
+			state_select_options = state_select_options.concat(all_states);
+
+			var state_selection = d3.select("#selectedstate")    
+			  .selectAll("option")
+			  .data(state_select_options);
+			  
+			  state_selection.enter()
+			  .append("option")
+			  .text(function(d){return d});
+
+			  state_selection.exit().remove();
+		});	
+
+		console.log(csv_data);
+
+		$('#selectedstate').change( function(){
+			var state = this.value;
+			console.log(state);
+
+			if(state != select_state_default_prompt)
+			{
+				show_state_data(state);
+			}	
+			else
+			{
+				d3.select('#plotter')
+					.selectAll('div')
+					.remove()
+			}		
+		});		
+
+
+		var show_state_data = function(state)  // Function for showing reconstruct chart based on States
+		{
+			var state_data = csv_data.filter(function(d) {return d.state == state});
+
+			state_data.sort(function(a,b){
+				return d3.ascending(a.year*12 + months.indexOf(a.month), b.year*12 + months.indexOf(b.month));
+			});
+
+			var period = parseInt($('.radio-selector').find('.checked').attr('data-value'));
+			
+			switch(period)   // Slicing the time period
+			{
+				case 0: //12 months' data only
+					state_data = state_data.slice(-12);
+					break;
+
+				case 1: //2 years
+					state_data = state_data.slice(-24);
+					break;
+
+                   default:
+					break;
+			}						
+           bar_width = Math.floor(max_plot_width/state_data.length);		
+           var h_scaler = d3.scale.linear()
+					  .domain([0, d3.max(state_data, function(d){return d.u_rate})])
+					  .range([0, plot_height]);
+
+    var color = d3.scale.category20();
+
+			d3.select('#chart1-canvas').style('width', (state_data.length * bar_width) + "px");
+
+			var plotter = d3.select('#plotter') // For showing sliced time scale data
+							.style('width', (state_data.length * bar_width) + "px" )
+						    .selectAll('div')
+						    .data(state_data)
+						    .style('width', function(d){return bar_width + "px"})
+						    .style('height', function(d){return h_scaler(d.u_rate) + "px"})
+				  		    .style('left', function(d,i){return (i*bar_width) + "px"})
+				  		    .attr('data-year', function(d){return d.year})
+				  		    .attr('data-month', function(d){return d.month})
+				  		    .attr('data-u-rate', function(d){return d.u_rate})
+				  		    .style("background", function(d,i){return color(d.month);})
+				  		    .on('mouseover', function (d,i){
+					  		    	var b = d3.select(this);
+					  		    	d3.select('#year').text(b.attr('data-year'));
+					  		    	d3.select('#month').text(b.attr('data-month'));
+					  		    	d3.select('#rate').text(b.attr('data-u-rate'));
+					  		    	return;
+				  		    	})
+			
+			plotter.enter().append('div')  // For showing data of all times.
+						    .style('width', function(d){return bar_width + "px"})
+						    .style('height', function(d){return h_scaler(d.u_rate) + "px"})
+						  	.style('left', function(d,i){return (i*bar_width) + "px"})
+						  	.attr('data-year', function(d){return d.year})
+						  	.attr('data-month', function(d){return d.month})
+				  		    .attr('data-u-rate', function(d){return d.u_rate})
+				  		    .style("background", function(d,i){return color(d.month);})
+  							.on('mouseover', function (d,i){
+					  		    	var b = d3.select(this);
+					  		    	d3.select('#year').text(b.attr('data-year'));
+					  		    	d3.select('#month').text(b.attr('data-month'));
+					  		    	d3.select('#rate').text(b.attr('data-u-rate'));
+					  		    	return;
+				  		    	})
+			plotter.exit().remove();
+		}
+	</script>
+	<script type="text/javascript">
+	$(document).ready(function(){  // Code for chaging data on selecting states
+		$('.radio').click(function(e)
+		{
+			var r = $(this);
+			r.parent('.radio-selector').find('.radio').removeClass('checked');
+			r.addClass('checked');
+
+			$('#selectedstate').trigger('change');
+		});
+	});
+	</script>
+</html>
